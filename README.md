@@ -189,3 +189,7 @@ published by the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 More information can be found [here](https://github.com/OxygenCobalt/Auxio/wiki/Licenses).
+
+The bundled headphone EQ profiles in `app/src/main/assets/autoeqDB` come from the
+[AutoEq](https://github.com/jaakkopasanen/AutoEq) project by Jaakko Pasanen and are
+distributed under the MIT License (see `app/src/main/assets/autoeqDB/LICENSE`).

@@ -48,9 +48,6 @@ interface PlaybackStateHolder {
      */
     fun resolveQueue(): RawQueue
 
-    /** The current audio session ID of the audio player. */
-    val audioSessionId: Int
-
     /** Applies a completely new playback state to the holder. */
     fun newPlayback(command: PlaybackCommand)
 

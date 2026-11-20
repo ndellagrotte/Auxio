@@ -19,8 +19,6 @@
 package org.oxycblt.auxio.playback.service
 
 import android.content.Context
-import android.content.Intent
-import android.media.audiofx.AudioEffect
 import android.provider.OpenableColumns
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -51,6 +49,7 @@ import kotlinx.coroutines.yield
 import org.oxycblt.auxio.image.ImageSettings
 import org.oxycblt.auxio.music.MusicRepository
 import org.oxycblt.auxio.playback.PlaybackSettings
+import org.oxycblt.auxio.playback.eq.EqAudioProcessor
 import org.oxycblt.auxio.playback.persist.PersistenceRepository
 import org.oxycblt.auxio.playback.replaygain.ReplayGainAudioProcessor
 import org.oxycblt.auxio.playback.state.DeferredPlayback
@@ -75,6 +74,7 @@ class ExoPlaybackStateHolder(
     private val playbackSettings: PlaybackSettings,
     private val commandFactory: PlaybackCommand.Factory,
     private val replayGainProcessor: ReplayGainAudioProcessor,
+    private val eqProcessor: EqAudioProcessor,
     private val musicRepository: MusicRepository,
     private val imageSettings: ImageSettings,
 ) :
@@ -87,7 +87,6 @@ class ExoPlaybackStateHolder(
     private val saveScope = CoroutineScope(Dispatchers.IO + saveJob)
     private val restoreScope = CoroutineScope(Dispatchers.IO + saveJob)
     private var currentSaveJob: Job? = null
-    private var openAudioEffectSession = false
 
     var sessionOngoing = false
         private set
@@ -97,6 +96,7 @@ class ExoPlaybackStateHolder(
         musicRepository.addUpdateListener(this)
         player.addListener(this)
         replayGainProcessor.attach()
+        eqProcessor.attach()
         playbackSettings.registerListener(this)
         imageSettings.registerListener(this)
     }
@@ -107,6 +107,7 @@ class ExoPlaybackStateHolder(
         musicRepository.removeUpdateListener(this)
         player.removeListener(this)
         replayGainProcessor.release()
+        eqProcessor.release()
         imageSettings.unregisterListener(this)
         playbackSettings.unregisterListener(this)
         player.release()
@@ -131,9 +132,6 @@ class ExoPlaybackStateHolder(
                 Player.REPEAT_MODE_ALL -> RepeatMode.ALL
                 else -> throw IllegalStateException("Unknown repeat mode: $repeatMode")
             }
-
-    override val audioSessionId: Int
-        get() = player.audioSessionId
 
     override fun resolveQueue(): RawQueue {
         if (musicRepository.library == null) {
@@ -472,18 +470,6 @@ class ExoPlaybackStateHolder(
             // Mark that we have started playing so that the notification can now be posted.
             L.d("Player has started playing")
             sessionOngoing = true
-            if (!openAudioEffectSession) {
-                // Convention to start an audioeffect session on play/pause rather than
-                // start/stop
-                L.d("Opening audio effect session")
-                broadcastAudioEffectAction(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION)
-                openAudioEffectSession = true
-            }
-        } else if (openAudioEffectSession) {
-            // Make sure to close the audio session when we stop playback.
-            L.d("Closing audio effect session")
-            broadcastAudioEffectAction(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION)
-            openAudioEffectSession = false
         }
     }
 
@@ -529,16 +515,6 @@ class ExoPlaybackStateHolder(
         L.e(error.stackTraceToString())
         player.prepare()
         playbackManager.next()
-    }
-
-    private fun broadcastAudioEffectAction(event: String) {
-        L.d("Broadcasting AudioEffect event: $event")
-        context.sendBroadcast(
-            Intent(event)
-                .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
-                .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC),
-        )
     }
 
     // --- MUSICREPOSITORY METHODS ---
@@ -652,6 +628,7 @@ class ExoPlaybackStateHolder(
         private val commandFactory: PlaybackCommand.Factory,
         private val mediaSourceFactory: MediaSource.Factory,
         private val replayGainProcessor: ReplayGainAudioProcessor,
+        private val eqProcessor: EqAudioProcessor,
         private val musicRepository: MusicRepository,
         private val imageSettings: ImageSettings,
     ) {
@@ -660,14 +637,15 @@ class ExoPlaybackStateHolder(
             // battery/apk size/cache size]
             val audioRenderer = RenderersFactory { handler, _, audioListener, _, _ ->
                 arrayOf<BaseRenderer>(
-                    FfmpegAudioRenderer(handler, audioListener, replayGainProcessor),
+                    // EQ runs after ReplayGain so that loudness is levelled before tonal shaping.
+                    FfmpegAudioRenderer(handler, audioListener, replayGainProcessor, eqProcessor),
                     MediaCodecAudioRenderer(
                         context,
                         MediaCodecSelector.DEFAULT,
                         handler,
                         audioListener,
                         DefaultAudioSink.Builder(context)
-                            .setAudioProcessors(arrayOf(replayGainProcessor))
+                            .setAudioProcessors(arrayOf(replayGainProcessor, eqProcessor))
                             .build(),
                     ),
                 )
@@ -696,6 +674,7 @@ class ExoPlaybackStateHolder(
                 playbackSettings,
                 commandFactory,
                 replayGainProcessor,
+                eqProcessor,
                 musicRepository,
                 imageSettings,
             )
