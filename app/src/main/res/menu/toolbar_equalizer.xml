@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_eq_add"
+        android:icon="@drawable/ic_add_24"
+        android:title="@string/lbl_eq_add"
+        app:showAsAction="always">
+        <menu>
+            <item
+                android:id="@+id/action_eq_autoeq"
+                android:icon="@drawable/ic_search_24"
+                android:title="@string/lbl_eq_autoeq" />
+            <item
+                android:id="@+id/action_eq_import"
+                android:icon="@drawable/ic_import_24"
+                android:title="@string/lbl_eq_import_file" />
+        </menu>
+    </item>
+</menu>

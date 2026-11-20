@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:transitionGroup="true"
+    tools:context=".playback.eq.ui.EqualizerFragment">
+
+    <org.oxycblt.auxio.ui.CoordinatorAppBarLayout
+        android:id="@+id/eq_appbar"
+        style="@style/Widget.Auxio.AppBarLayout"
+        app:liftOnScroll="true"
+        app:liftOnScrollTargetViewId="@id/eq_recycler">
+
+        <org.oxycblt.auxio.ui.AuxioToolbar
+            android:id="@+id/eq_toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:menu="@menu/toolbar_equalizer"
+            app:navigationIcon="@drawable/ic_back_24"
+            app:title="@string/lbl_equalizer" />
+
+    </org.oxycblt.auxio.ui.CoordinatorAppBarLayout>
+
+    <org.oxycblt.auxio.list.recycler.AuxioRecyclerView
+        android:id="@+id/eq_recycler"
+        style="@style/Widget.Auxio.RecyclerView.Linear"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior"
+        tools:listitem="@layout/item_eq_profile" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

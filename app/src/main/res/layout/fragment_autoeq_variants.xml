@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:transitionGroup="true"
+    tools:context=".playback.eq.ui.AutoEqVariantsFragment">
+
+    <org.oxycblt.auxio.ui.CoordinatorAppBarLayout
+        android:id="@+id/autoeq_variants_appbar"
+        style="@style/Widget.Auxio.AppBarLayout"
+        app:liftOnScroll="true"
+        app:liftOnScrollTargetViewId="@id/autoeq_variants_recycler">
+
+        <org.oxycblt.auxio.ui.AuxioToolbar
+            android:id="@+id/autoeq_variants_toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:navigationIcon="@drawable/ic_back_24"
+            app:subtitle="@string/lng_eq_autoeq_credit"
+            tools:title="Sennheiser HD 600" />
+
+    </org.oxycblt.auxio.ui.CoordinatorAppBarLayout>
+
+    <org.oxycblt.auxio.list.recycler.AuxioRecyclerView
+        android:id="@+id/autoeq_variants_recycler"
+        style="@style/Widget.Auxio.RecyclerView.Linear"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingBottom="@dimen/recycler_fab_space_normal"
+        app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior"
+        tools:listitem="@layout/item_autoeq_variant" />
+
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/autoeq_variants_save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="@dimen/spacing_medium"
+        android:enabled="false"
+        android:text="@string/lbl_save"
+        app:icon="@drawable/ic_check_24" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

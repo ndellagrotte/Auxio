@@ -574,6 +574,7 @@ class MainFragment :
             when (outer) {
                 is Outer.Settings -> MainFragmentDirections.preferences()
                 is Outer.About -> MainFragmentDirections.about()
+                is Outer.Equalizer -> MainFragmentDirections.equalizer()
                 null -> return
             }
         findNavController().navigateSafe(directions)

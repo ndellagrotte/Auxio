@@ -119,6 +119,13 @@
 
     <string name="lbl_playback">Now playing</string>
     <string name="lbl_equalizer">Equalizer</string>
+    <string name="lbl_eq_none">No equalization</string>
+    <string name="lbl_eq_add">Add profile</string>
+    <string name="lbl_eq_autoeq">Find headphones</string>
+    <string name="lbl_eq_import_file">Import from file</string>
+    <string name="lbl_eq_no_profiles">No profiles</string>
+    <string name="lbl_eq_no_models">No headphones found</string>
+    <string name="lbl_eq_imported">Imported profile</string>
     <string name="lbl_play">Play</string>
     <string name="lbl_shuffle">Shuffle</string>
 
@@ -204,6 +211,11 @@
     <string name="lng_playlist_deleted">Playlist deleted</string>
     <string name="lng_playlist_added">Added to playlist</string>
     <string name="lng_supporters_promo">Donate to the project to get your name added here!</string>
+    <string name="lng_eq_empty">Add a correction profile for your headphones, or import an Equalizer APO parametric EQ file.</string>
+    <string name="lng_eq_search">Search headphones</string>
+    <string name="lng_eq_autoeq_credit">Headphone profiles from the AutoEq project</string>
+    <string name="lng_eq_profiles_saved">Profiles saved</string>
+    <string name="lng_eq_profile_imported">Profile imported</string>
     <!-- As in music library -->
     <string name="lng_search_library">Search your library…</string>
     <string name="lng_tasker_start">
@@ -350,6 +362,15 @@
     <string name="err_share_too_large">This is too large to share</string>
     <string name="err_share_failed">Unable to share this</string>
     <string name="err_no_app">No app found that can handle this task</string>
+    <string name="err_eq_import_failed">Unable to import this EQ profile</string>
+    <string name="err_eq_read_failed">Unable to read this file</string>
+    <string name="err_eq_save_failed">Unable to save the selected profiles</string>
+    <string name="err_eq_preamp">The preamp (%.1f dB) is outside of -50 to 50 dB</string>
+    <string name="err_eq_no_filters">No enabled PK, LSC, or HSC filters were found</string>
+    <string name="err_eq_too_many_filters">Too many filters (%1$d). The maximum is %2$d.</string>
+    <string name="err_eq_frequency">Filter %1$d has an invalid frequency (%2$.1f Hz)</string>
+    <string name="err_eq_gain">Filter %1$d has a gain (%2$.1f dB) outside of -30 to 30 dB</string>
+    <string name="err_eq_q">Filter %1$d has a Q (%2$.2f) outside of 0 to 20</string>
     <!-- No folders in the "Music Folders" setting -->
     <string name="err_bad_location">This folder is not supported</string>
     <string name="lbl_no_folders">No folders</string>
@@ -380,6 +401,8 @@
     <string name="desc_genre_image">Genre image for %s</string>
     <string name="desc_playlist_image">Playlist image for %s</string>
     <string name="desc_selection_image">Selection image</string>
+    <string name="desc_eq_delete">Delete EQ profile</string>
+    <string name="desc_eq_response">Frequency response of the active EQ profile</string>
 
 
     <!-- Default Namespace | Placeholder values -->
@@ -462,6 +485,8 @@
     <string name="fmt_db_pos">+%.1f dB</string>
     <!-- Use your native country's abbreviation for decibel units. -->
     <string name="fmt_db_neg">-%.1f dB</string>
+    <!-- Joins information about an EQ profile, like its measurement source and rig -->
+    <string name="fmt_eq_info">%1$s · %2$s</string>
     <!-- Use your native country's abbreviation for bit rate units. -->
     <string name="fmt_bitrate">%d kbps</string>
     <!-- Use your native country's abbreviation for hertz units. -->
@@ -496,5 +521,15 @@
     <plurals name="fmt_seconds">
         <item quantity="one">%d second</item>
         <item quantity="other">%d seconds</item>
+    </plurals>
+
+    <plurals name="fmt_eq_band_count">
+        <item quantity="one">%d band</item>
+        <item quantity="other">%d bands</item>
+    </plurals>
+
+    <plurals name="fmt_eq_variant_count">
+        <item quantity="one">%d measurement</item>
+        <item quantity="other">%d measurements</item>
     </plurals>
 </resources>

@@ -57,7 +57,8 @@ precise/original dates, sort tags, and more
 - Android Auto support
 - Automatic gapless playback
 - Full ReplayGain support (On MP3, FLAC, OGG, OPUS, and MP4 files)
-- External equalizer support (ex. Wavelet)
+- Parametric equalizer with offline AutoEq profiles, applied in high resolution (24-bit and float
+sources are equalized in 64-bit and sent to Android as 32-bit float)
 - Edge-to-edge
 - Embedded covers support
 - Search functionality
@@ -189,3 +190,7 @@ published by the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 More information can be found [here](https://github.com/OxygenCobalt/Auxio/wiki/Licenses).
+
+The bundled headphone EQ profiles in `app/src/main/assets/autoeqDB` come from the
+[AutoEq](https://github.com/jaakkopasanen/AutoEq) project by Jaakko Pasanen and are
+distributed under the MIT License (see `app/src/main/assets/autoeqDB/LICENSE`).

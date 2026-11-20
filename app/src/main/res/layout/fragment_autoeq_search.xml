@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:transitionGroup="true"
+    tools:context=".playback.eq.ui.AutoEqSearchFragment">
+
+    <org.oxycblt.auxio.ui.CoordinatorAppBarLayout
+        android:id="@+id/autoeq_search_appbar"
+        style="@style/Widget.Auxio.AppBarLayout"
+        app:liftOnScroll="true"
+        app:liftOnScrollTargetViewId="@id/autoeq_search_recycler">
+
+        <org.oxycblt.auxio.ui.AuxioToolbar
+            android:id="@+id/autoeq_search_toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:navigationIcon="@drawable/ic_back_24">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/autoeq_search_edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:hint="@string/lng_eq_search"
+                android:imeOptions="actionSearch|flagNoExtractUi"
+                android:inputType="textFilter"
+                android:paddingStart="@dimen/spacing_tiny"
+                android:paddingEnd="0dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+        </org.oxycblt.auxio.ui.AuxioToolbar>
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/autoeq_search_progress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:visibility="gone" />
+
+    </org.oxycblt.auxio.ui.CoordinatorAppBarLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">
+
+        <org.oxycblt.auxio.list.recycler.AuxioRecyclerView
+            android:id="@+id/autoeq_search_recycler"
+            style="@style/Widget.Auxio.RecyclerView.Linear"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            tools:listitem="@layout/item_autoeq_model" />
+
+        <TextView
+            android:id="@+id/autoeq_search_empty"
+            style="@style/Widget.Auxio.TextView.Base"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/lbl_eq_no_models"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?android:attr/textColorSecondary"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

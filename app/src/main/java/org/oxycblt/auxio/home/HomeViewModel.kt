@@ -272,10 +272,16 @@ constructor(
     fun showAbout() {
         showOuter.put(Outer.About)
     }
+
+    fun showEqualizer() {
+        showOuter.put(Outer.Equalizer)
+    }
 }
 
 sealed interface Outer {
     data object Settings : Outer
 
     data object About : Outer
+
+    data object Equalizer : Outer
 }
