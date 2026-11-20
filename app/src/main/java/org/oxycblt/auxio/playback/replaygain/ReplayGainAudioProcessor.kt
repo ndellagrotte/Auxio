@@ -25,6 +25,7 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import javax.inject.Inject
 import kotlin.math.pow
 import org.oxycblt.auxio.playback.PlaybackSettings
@@ -40,6 +41,9 @@ import timber.log.Timber as L
  * Instead of leveraging the volume attribute like other implementations, this system manipulates
  * the bitstream itself to modify the volume, which allows the use of positive ReplayGain values.
  *
+ * Accepts 16-bit PCM (clamped) or float PCM (unclamped). In playback, it runs on the EQ's float
+ * output in [org.oxycblt.auxio.playback.service.EqAudioSink].
+ *
  * Note: This audio processor must be attached to a respective [Player] instance as a
  * [Player.Listener] to function properly.
  *
@@ -52,12 +56,13 @@ constructor(
     private val playbackManager: PlaybackStateManager,
     private val playbackSettings: PlaybackSettings,
 ) : BaseAudioProcessor(), PlaybackStateManager.Listener, PlaybackSettings.Listener {
-    private var volume = 1f
-        set(value) {
-            field = value
-            // Processed bytes are no longer valid, flush the stream
-            flush()
-        }
+    /**
+     * Written from the main thread and read by the audio thread, which picks it up at the next
+     * buffer. Not flushed on change: buffers are processed and handed on synchronously, so nothing
+     * processed with the old volume is held here, and a flush from another thread could drop a
+     * buffer between [queueInput] and [getOutput].
+     */
+    @Volatile private var volume = 1f
 
     fun attach() {
         playbackManager.addListener(this)
@@ -170,11 +175,10 @@ constructor(
     override fun onConfigure(
         inputAudioFormat: AudioProcessor.AudioFormat,
     ): AudioProcessor.AudioFormat {
-        if (inputAudioFormat.encoding == C.ENCODING_PCM_16BIT) {
-            // AudioProcessor is only provided 16-bit PCM audio data, so that's the only
-            // encoding we need to check for.
-            // TODO: Convert to a low-level audio processor capable of handling any kind of
-            //  PCM data, once ExoPlayer can support it.
+        if (
+            inputAudioFormat.encoding == C.ENCODING_PCM_16BIT ||
+                inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
+        ) {
             return inputAudioFormat
         }
 
@@ -185,12 +189,20 @@ constructor(
         val pos = inputBuffer.position()
         val limit = inputBuffer.limit()
         val buffer = replaceOutputBuffer(limit - pos)
+        val volume = volume
 
         if (volume == 1f) {
             // Nothing to adjust, just copy the audio data.
             // isActive is technically a much better way of doing a no-op like this, but since
             // the adjustment can change during playback I'm largely forced to do this.
             buffer.put(inputBuffer.slice())
+        } else if (inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT) {
+            // Float has headroom past full scale, so no clamping here: any clipping happens at
+            // output.
+            val input = inputBuffer.slice().order(ByteOrder.nativeOrder())
+            while (input.remaining() >= 4) {
+                buffer.putFloat(input.getFloat() * volume)
+            }
         } else {
             for (i in pos until limit step 2) {
                 // 16-bit PCM audio, deserialize a little-endian short.

@@ -57,7 +57,8 @@ precise/original dates, sort tags, and more
 - Android Auto support
 - Automatic gapless playback
 - Full ReplayGain support (On MP3, FLAC, OGG, OPUS, and MP4 files)
-- External equalizer support (ex. Wavelet)
+- Parametric equalizer with offline AutoEq profiles, applied in high resolution (24-bit and float
+sources are equalized in 64-bit and sent to Android as 32-bit float)
 - Edge-to-edge
 - Embedded covers support
 - Search functionality

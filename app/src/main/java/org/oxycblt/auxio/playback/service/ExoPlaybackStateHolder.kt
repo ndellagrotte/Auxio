@@ -637,16 +637,13 @@ class ExoPlaybackStateHolder(
             // battery/apk size/cache size]
             val audioRenderer = RenderersFactory { handler, _, audioListener, _, _ ->
                 arrayOf<BaseRenderer>(
-                    // EQ runs after ReplayGain so that loudness is levelled before tonal shaping.
-                    FfmpegAudioRenderer(handler, audioListener, replayGainProcessor, eqProcessor),
+                    FfmpegAudioRenderer(handler, audioListener, createAudioSink()),
                     MediaCodecAudioRenderer(
                         context,
                         MediaCodecSelector.DEFAULT,
                         handler,
                         audioListener,
-                        DefaultAudioSink.Builder(context)
-                            .setAudioProcessors(arrayOf(replayGainProcessor, eqProcessor))
-                            .build(),
+                        createAudioSink(),
                     ),
                 )
             }
@@ -679,6 +676,18 @@ class ExoPlaybackStateHolder(
                 imageSettings,
             )
         }
+
+        /**
+         * An audio sink that runs the EQ and ReplayGain (see [EqAudioSink]). Float output is
+         * enabled, so decoders deliver float (keeping high-resolution precision) and the processed
+         * float reaches the AudioTrack without being reduced to 16-bit.
+         */
+        private fun createAudioSink() =
+            EqAudioSink(
+                DefaultAudioSink.Builder(context).setEnableFloatOutput(true).build(),
+                eqProcessor,
+                replayGainProcessor,
+            )
     }
 
     private companion object {

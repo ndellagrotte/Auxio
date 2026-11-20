@@ -19,11 +19,13 @@
 package org.oxycblt.auxio.playback.eq
 
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.inject.Inject
@@ -32,8 +34,12 @@ import timber.log.Timber as L
 /**
  * An [AudioProcessor] that applies the active [EqProfile] to decoded PCM.
  *
- * Accepts 16-bit or float PCM and outputs the same encoding. Other formats are not handled
- * ([onConfigure] returns [AudioFormat.NOT_SET]) and bypass the EQ.
+ * Accepts any linear PCM encoding and always outputs 32-bit float (unclamped), including while the
+ * EQ is off, so turning the EQ on or off never changes the output format. Other formats are not
+ * handled ([onConfigure] returns [AudioFormat.NOT_SET]) and bypass the EQ.
+ *
+ * This runs in [org.oxycblt.auxio.playback.service.EqAudioSink], ahead of `DefaultAudioSink`, since
+ * that sink's own processor chain only ever sees 16-bit PCM.
  *
  * Profile changes may arrive from any thread: they publish an immutable snapshot, and the audio
  * thread picks it up at the start of the next buffer, recomputing coefficients for the current
@@ -74,7 +80,11 @@ class EqAudioProcessor @Inject constructor(private val profileRepository: EqProf
             inputAudioFormat.encoding in EqChain.SUPPORTED_ENCODINGS &&
                 inputAudioFormat.channelCount > 0
         ) {
-            inputAudioFormat
+            AudioFormat(
+                inputAudioFormat.sampleRate,
+                inputAudioFormat.channelCount,
+                C.ENCODING_PCM_FLOAT,
+            )
         } else {
             AudioFormat.NOT_SET
         }
@@ -82,9 +92,9 @@ class EqAudioProcessor @Inject constructor(private val profileRepository: EqProf
     override fun queueInput(inputBuffer: ByteBuffer) {
         val size = inputBuffer.remaining()
         if (size == 0) return
-        val output = replaceOutputBuffer(size)
-        currentChain()
-            .process(inputBuffer.order(ByteOrder.nativeOrder()), inputAudioFormat.encoding, output)
+        val encoding = inputAudioFormat.encoding
+        val output = replaceOutputBuffer(size / Util.getByteDepth(encoding) * FLOAT_BYTES)
+        currentChain().process(inputBuffer.order(ByteOrder.nativeOrder()), encoding, output)
         // Drop a trailing partial sample, if any, so the input always counts as consumed.
         inputBuffer.position(inputBuffer.limit())
         output.flip()
@@ -118,6 +128,7 @@ class EqAudioProcessor @Inject constructor(private val profileRepository: EqProf
     }
 
     private companion object {
+        const val FLOAT_BYTES = 4
         val FLAT = ParametricEq(0.0, emptyList())
     }
 }

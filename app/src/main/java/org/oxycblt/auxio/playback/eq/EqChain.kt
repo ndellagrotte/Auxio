@@ -22,16 +22,15 @@ import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.math.pow
-import kotlin.math.round
 
 /**
  * A cascade of biquads applied to interleaved PCM, in double precision.
  *
- * The output encoding always matches the input encoding ([SUPPORTED_ENCODINGS]): 16-bit input is
- * clamped back into 16-bit, while float input is written back as unclamped float. Preserving the
- * encoding is required since ExoPlayer's silence-skipping processor, which always runs after this,
- * only accepts 16-bit PCM.
+ * Reads any linear PCM encoding ([SUPPORTED_ENCODINGS]) and always writes 32-bit float, unclamped,
+ * so neither a positive preamp nor a boost clips here. High-resolution input (24-bit, 32-bit,
+ * float) keeps its full precision.
  *
  * Not thread-safe: owned by the audio thread. Processing allocates nothing.
  */
@@ -43,7 +42,7 @@ class EqChain(eq: ParametricEq, val sampleRate: Int, val channelCount: Int) {
     /** Transposed direct form II state, `[channel][filter][z1, z2]` flattened. */
     private val state: DoubleArray
 
-    /** Whether this chain leaves the signal untouched, allowing a plain copy. */
+    /** Whether this chain leaves the signal untouched (beyond conversion to float). */
     val isPassthrough: Boolean
 
     init {
@@ -60,33 +59,76 @@ class EqChain(eq: ParametricEq, val sampleRate: Int, val channelCount: Int) {
     }
 
     /**
-     * Reads all whole samples of [input], which holds [encoding] PCM in native byte order, and
-     * writes the filtered samples to [output] in the same encoding.
+     * Reads all whole samples of [input], which holds [encoding] PCM, and writes one native-order
+     * float per sample to [output]. Little-endian encodings are read in [input]'s byte order, which
+     * should be native.
      */
     fun process(input: ByteBuffer, encoding: Int, output: ByteBuffer) {
-        if (isPassthrough) {
+        if (isPassthrough && encoding == C.ENCODING_PCM_FLOAT) {
             output.put(input)
             return
         }
+        val inputOrder = input.order()
         var channel = 0
         when (encoding) {
-            C.ENCODING_PCM_16BIT ->
-                while (input.remaining() >= 2) {
-                    val y = round(filter(input.getShort() / SCALE_16, channel) * SCALE_16)
-                    output.putShort(
-                        y.toInt()
-                            .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                            .toShort(),
+            C.ENCODING_PCM_8BIT ->
+                while (input.hasRemaining()) {
+                    output.putFloat(
+                        filter(((input.get().toInt() and 0xFF) - 128) / SCALE_8, channel),
                     )
                     channel = nextChannel(channel)
                 }
-            C.ENCODING_PCM_FLOAT ->
-                while (input.remaining() >= 4) {
-                    output.putFloat(filter(input.getFloat().toDouble(), channel).toFloat())
+            C.ENCODING_PCM_16BIT,
+            C.ENCODING_PCM_16BIT_BIG_ENDIAN -> {
+                if (encoding == C.ENCODING_PCM_16BIT_BIG_ENDIAN) input.order(ByteOrder.BIG_ENDIAN)
+                while (input.remaining() >= 2) {
+                    output.putFloat(filter(input.getShort() / SCALE_16, channel))
                     channel = nextChannel(channel)
                 }
+            }
+            C.ENCODING_PCM_24BIT ->
+                while (input.remaining() >= 3) {
+                    val b0 = input.get().toInt() and 0xFF
+                    val b1 = input.get().toInt() and 0xFF
+                    val b2 = input.get().toInt() // Sign carries from the top byte.
+                    output.putFloat(filter((b0 or (b1 shl 8) or (b2 shl 16)) / SCALE_24, channel))
+                    channel = nextChannel(channel)
+                }
+            C.ENCODING_PCM_24BIT_BIG_ENDIAN ->
+                while (input.remaining() >= 3) {
+                    val b2 = input.get().toInt() // Sign carries from the top byte.
+                    val b1 = input.get().toInt() and 0xFF
+                    val b0 = input.get().toInt() and 0xFF
+                    output.putFloat(filter((b0 or (b1 shl 8) or (b2 shl 16)) / SCALE_24, channel))
+                    channel = nextChannel(channel)
+                }
+            C.ENCODING_PCM_32BIT,
+            C.ENCODING_PCM_32BIT_BIG_ENDIAN -> {
+                if (encoding == C.ENCODING_PCM_32BIT_BIG_ENDIAN) input.order(ByteOrder.BIG_ENDIAN)
+                while (input.remaining() >= 4) {
+                    output.putFloat(filter(input.getInt() / SCALE_32, channel))
+                    channel = nextChannel(channel)
+                }
+            }
+            C.ENCODING_PCM_FLOAT,
+            C.ENCODING_PCM_FLOAT_BIG_ENDIAN -> {
+                if (encoding == C.ENCODING_PCM_FLOAT_BIG_ENDIAN) input.order(ByteOrder.BIG_ENDIAN)
+                while (input.remaining() >= 4) {
+                    output.putFloat(filter(input.getFloat().toDouble(), channel))
+                    channel = nextChannel(channel)
+                }
+            }
+            C.ENCODING_PCM_DOUBLE,
+            C.ENCODING_PCM_DOUBLE_BIG_ENDIAN -> {
+                if (encoding == C.ENCODING_PCM_DOUBLE_BIG_ENDIAN) input.order(ByteOrder.BIG_ENDIAN)
+                while (input.remaining() >= 8) {
+                    output.putFloat(filter(input.getDouble(), channel))
+                    channel = nextChannel(channel)
+                }
+            }
             else -> throw IllegalArgumentException("Unsupported PCM encoding $encoding")
         }
+        input.order(inputOrder)
     }
 
     @Suppress("NOTHING_TO_INLINE")
@@ -94,7 +136,7 @@ class EqChain(eq: ParametricEq, val sampleRate: Int, val channelCount: Int) {
         if (channel + 1 == channelCount) 0 else channel + 1
 
     @Suppress("NOTHING_TO_INLINE")
-    private inline fun filter(sample: Double, channel: Int): Double {
+    private inline fun filter(sample: Double, channel: Int): Float {
         var x = sample * preampGain
         var s = channel * filterCount * 2
         var c = 0
@@ -106,7 +148,7 @@ class EqChain(eq: ParametricEq, val sampleRate: Int, val channelCount: Int) {
             s += 2
             c += BiquadDesign.COEFFICIENT_COUNT
         }
-        return x
+        return x.toFloat()
     }
 
     fun resetState() = state.fill(0.0)
@@ -122,9 +164,25 @@ class EqChain(eq: ParametricEq, val sampleRate: Int, val channelCount: Int) {
     }
 
     companion object {
-        /** Encodings [process] accepts. */
-        val SUPPORTED_ENCODINGS = setOf(C.ENCODING_PCM_16BIT, C.ENCODING_PCM_FLOAT)
+        /** Input encodings [process] accepts: every linear PCM encoding. */
+        val SUPPORTED_ENCODINGS =
+            setOf(
+                C.ENCODING_PCM_8BIT,
+                C.ENCODING_PCM_16BIT,
+                C.ENCODING_PCM_16BIT_BIG_ENDIAN,
+                C.ENCODING_PCM_24BIT,
+                C.ENCODING_PCM_24BIT_BIG_ENDIAN,
+                C.ENCODING_PCM_32BIT,
+                C.ENCODING_PCM_32BIT_BIG_ENDIAN,
+                C.ENCODING_PCM_FLOAT,
+                C.ENCODING_PCM_FLOAT_BIG_ENDIAN,
+                C.ENCODING_PCM_DOUBLE,
+                C.ENCODING_PCM_DOUBLE_BIG_ENDIAN,
+            )
 
+        private const val SCALE_8 = 128.0
         private const val SCALE_16 = 32768.0
+        private const val SCALE_24 = 8388608.0
+        private const val SCALE_32 = 2147483648.0
     }
 }
